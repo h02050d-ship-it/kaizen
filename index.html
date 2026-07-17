@@ -112,6 +112,20 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
 .empty{text-align:center;color:var(--sub);padding:52px 0;font-size:13px;line-height:2}
 .empty .big{font-size:34px}
 
+/* ===== 刃物管理 加工実績リスト ===== */
+.hamowrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 13px;box-shadow:0 1px 5px rgba(31,46,40,.06)}
+.hamoempty{text-align:center;color:var(--sub);font-size:12px;padding:16px 0;line-height:1.8}
+.hamorow{display:flex;align-items:center;gap:10px;padding:10px 1px;border-bottom:1px dashed var(--line);cursor:pointer}
+.hamorow:last-child{border-bottom:0}
+.hamorow .hi{flex:1;min-width:0}
+.hamorow .hl1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hamorow .hw{font-size:11px;font-weight:800;color:var(--sub)}
+.hamorow .hn{font-size:13.5px;font-weight:800}
+.hamorow .hl2{font-size:12px;color:var(--sub);font-weight:700;margin-top:3px}
+.hamorow .hl2 b{color:var(--ink);font-size:13px}
+.hamorow .hdone{color:var(--ok);font-weight:800}
+.hbtn2{flex:0 0 auto;border:1.5px solid var(--accent);color:var(--accent2);background:#fff;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800}
+
 /* ===== FAB ===== */
 #fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:40;border:0;border-radius:99px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;padding:15px 22px;box-shadow:0 6px 18px rgba(4,120,87,.4);display:none;align-items:center;gap:7px}
 #fab:active{transform:scale(.96)}
@@ -203,6 +217,15 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
         </div>
         <input type="text" id="fThickOther" placeholder="厚みを入力（例：18mm）" style="display:none;margin-top:8px">
       </div>
+      <div class="fld"><label>長さ</label>
+        <div class="segrow" id="lenSeg">
+          <button type="button" class="seg" data-len="1m">1m</button>
+          <button type="button" class="seg" data-len="2m">2m</button>
+          <button type="button" class="seg" data-len="3m">3m</button>
+          <button type="button" class="seg" data-len="4m">4m</button>
+        </div>
+      </div>
+      <div class="fld"><label>等級</label><input type="text" id="fGrade" list="gradeList" placeholder="例：上小・節あり（任意）"><datalist id="gradeList"></datalist></div>
       <div class="fld"><label>商品メモ</label><input type="text" id="fProduct" placeholder="例：桧羽目板（任意）"></div>
       <div class="fld"><label>原板の仕分け<em>*</em></label>
         <div class="segrow" id="sortSeg">
@@ -212,11 +235,7 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
         <input type="text" id="fSortCond" placeholder="仕分け条件（例：生き節が端に少ない板を選別）" style="display:none;margin-top:8px">
       </div>
       <div class="fld"><label>加工枚数<em>*</em></label><input type="number" id="fTotal" min="1" inputmode="numeric" placeholder="例：60"></div>
-      <div class="row3">
-        <div class="fld"><label>割れ</label><input type="number" id="fCrack" min="0" value="0" inputmode="numeric"></div>
-        <div class="fld"><label>埋木飛び</label><input type="number" id="fPlug" min="0" value="0" inputmode="numeric"></div>
-        <div class="fld"><label>その他不良</label><input type="number" id="fOther" min="0" value="0" inputmode="numeric"></div>
-      </div>
+      <div class="fld"><label>修正行き枚数（割れ・埋木飛びなど全部まとめて）<em>*</em></label><input type="number" id="fFix" min="0" value="0" inputmode="numeric"></div>
       <div class="livebox" id="liveBox">加工枚数を入力してください</div>
       <div class="fld"><label>メモ</label><textarea id="fMemo" placeholder="気づいたこと・原因の推測など（任意）"></textarea></div>
       <div class="fld"><label>記録者</label>
@@ -298,10 +317,36 @@ let TAB="rec";
 let PERIOD="30d";        // 30d | thism | lastm | all
 let TSTATUS="all";       // 改善リストの状態フィルタ
 let editRecId=null;
+let editSrcT=null;       // 刃物管理ツールの履歴t（連携元ID）
 let editThId=null;
 let selThick="12";       // '12' | '15' | 'other'
+let selLen="";           // '' | '1m' | '2m' | '3m' | '4m'
 let selSort="なし";      // 'なし' | 'あり'
 let selWho="";
+
+/* ===== 刃物管理ツール連携（モルダー加工実績） ===== */
+const HAMONO_API="https://script.google.com/macros/s/AKfycbwmcImkSxLl63lzlWAbRcUgfIG9dajZHOoFBtqQn_0z5v3Lg_ydXSOauHHCMeCu3Qfxww/exec";
+const HAMONO_MAP={"15mmフローリング":{th:"15",prod:"フローリング"},"12mmフローリング":{th:"12",prod:"フローリング"},"羽目板":{th:"12",prod:"羽目板"},"スノコ":{th:"",prod:"スノコ"},"ナイス新刃":{th:"",prod:"ナイスオリジナル"}};
+let HAMONO={state:"loading",hist:[]};
+function hamonoDisp(n){ return n==="ナイス新刃"?"ナイスオリジナル":String(n||""); }
+function fetchHamono(){
+  const cb="__hamonoCb"+Math.floor(Math.random()*1e9);
+  const s=document.createElement("script");
+  let finished=false;
+  const done=(ok,j)=>{
+    if(finished) return; finished=true;
+    try{ delete window[cb]; }catch(e){ window[cb]=undefined; }
+    if(s.parentNode) s.parentNode.removeChild(s);
+    HAMONO.state=ok?"ok":"err";
+    if(ok) HAMONO.hist=(j&&j.history)||[];
+    if(TAB==="rec"&&$("gate").style.display!=="flex") render();
+  };
+  window[cb]=j=>done(true,j);
+  s.onerror=()=>done(false);
+  s.src=HAMONO_API+"?action=get&callback="+cb;
+  document.body.appendChild(s);
+  setTimeout(()=>done(false),15000);
+}
 
 /* ===== 資格情報（共通SSO: h02050d-ship-it.github.io の他ツールのログインを引き継ぐ）===== */
 const SSO_KEY="hayazai_sso_cred";
@@ -381,6 +426,7 @@ async function fetchOnce(url,ms){
 }
 async function fetchAll(){
   setBadge("load");
+  fetchHamono();
   let j=null;
   for(let i=0;i<3&&!j;i++){ try{ j=await fetchOnce(GAS_URL+"?api=all&"+authQS(), i===0?25000:12000); }catch(e){ j=null; } }
   if(!j){ setBadge("err"); if(!RECORDS.length&&!THEMES.length) $("list").innerHTML='<div class="empty"><div class="big">📡</div>読み込みに失敗しました<br><button class="whoedit" style="margin-top:14px;font-size:13px" onclick="fetchAll()">再読み込み</button></div>'; return; }
@@ -428,9 +474,9 @@ function periodRecords(){ return RECORDS.filter(r=>r.date&&inPeriod(r.date)); }
 
 /* ===== 集計 ===== */
 function agg(list){
-  let total=0,ng=0,crack=0,plug=0,other=0;
-  list.forEach(r=>{ total+=r.total; ng+=r.ng; crack+=r.crack; plug+=r.plug; other+=r.other; });
-  return {total,ng,crack,plug,other,rate:total>0?ng/total:0,n:list.length};
+  let total=0,fix=0;
+  list.forEach(r=>{ total+=r.total; fix+=r.fix; });
+  return {total,fix,rate:total>0?fix/total:0,n:list.length};
 }
 
 /* ===== 描画 ===== */
@@ -451,8 +497,12 @@ function renderRec(){
     +pchip("30d","直近30日")+pchip("thism","今月")+pchip("lastm","先月")+pchip("all","全期間")
     +'</div>';
 
+  // 刃物管理ツールの加工実績（タップで修正入力）
+  html+='<div class="sechead">🔪 最近のモルダー加工（刃物管理と連動）</div>';
+  html+=hamonoHtml();
+
   if(!RECORDS.length){
-    html+='<div class="empty"><div class="big">📉</div>まだ不良記録がありません<br>右下の「＋ 記録」から、モルダー加工の<br>「何枚中何枚だめだったか」を記録できます</div>';
+    html+='<div class="empty"><div class="big">📉</div>まだ不良記録がありません<br>上の加工実績をタップするか、右下の「＋ 記録」から<br>「何枚中何枚 修正行きか」を記録できます</div>';
     $("list").innerHTML=html; bindPchips(); return;
   }
 
@@ -467,14 +517,13 @@ function renderRec(){
     $("list").innerHTML=html; bindPchips(); return;
   }
 
-  html+='<div class="sechead">📊 厚み別の不良率</div><div class="sumgrid">';
+  html+='<div class="sechead">📊 厚み別の修正率</div><div class="sumgrid">';
   shownKeys.forEach(k=>{
     const a=agg(groups[k]); const cc=thickColor(k);
     html+=`<div class="sumcard" style="--cc:${cc}">
       <div class="th">${esc(thickLabel(k))}<span class="sub">${a.n}件</span></div>
       <div class="rate">${pct(a.rate)}<small>%</small></div>
-      <div class="cnt">加工 ${a.total}枚 中 不良 ${a.ng}枚</div>
-      <div class="bd"><span>割れ<b>${a.crack}</b></span><span>埋木<b>${a.plug}</b></span><span>他<b>${a.other}</b></span></div>
+      <div class="cnt">加工 ${a.total}枚 中 修正行き ${a.fix}枚</div>
     </div>`;
   });
   html+='</div>';
@@ -496,7 +545,7 @@ function renderRec(){
   html+='</div>';
 
   // 月別推移（直近6ヶ月・厚み全体・期間フィルタ非依存）
-  html+='<div class="sechead">📈 月別の不良率（直近6ヶ月・全厚み）</div>';
+  html+='<div class="sechead">📈 月別の修正率（直近6ヶ月・全厚み）</div>';
   html+=trendHtml();
 
   // 履歴
@@ -511,7 +560,50 @@ function bindPchips(){ document.querySelectorAll(".pchip").forEach(b=>b.onclick=
 
 function cmpCol(lb,a,isWin){
   if(!a.n) return `<div class="cmpcol nd"><div class="lb">${lb}</div><div class="v">—</div><div class="c2">記録なし</div></div>`;
-  return `<div class="cmpcol${isWin?" win":""}"><div class="lb">${lb}</div><div class="v">${pct(a.rate)}%</div><div class="c2">${a.ng}/${a.total}枚・${a.n}件</div></div>`;
+  return `<div class="cmpcol${isWin?" win":""}"><div class="lb">${lb}</div><div class="v">${pct(a.rate)}%</div><div class="c2">${a.fix}/${a.total}枚・${a.n}件</div></div>`;
+}
+
+/* ===== 刃物管理の加工実績リスト ===== */
+function hamonoHtml(){
+  if(HAMONO.state==="loading") return '<div class="hamowrap"><div class="hamoempty">加工実績を読み込み中…</div></div>';
+  if(HAMONO.state==="err") return '<div class="hamowrap"><div class="hamoempty">刃物管理ツールから読み込めませんでした（この端末がGoogleログイン済みか確認）<br><button class="whoedit" style="font-size:12px;margin-top:4px" onclick="HAMONO.state=\'loading\';render();fetchHamono()">再読み込み</button></div></div>';
+  if(!HAMONO.hist.length) return '<div class="hamowrap"><div class="hamoempty">最近の加工実績はまだありません（刃物管理ツールで「追加」すると出ます）</div></div>';
+  const now=new Date();
+  let html='<div class="hamowrap">';
+  HAMONO.hist.forEach(h=>{
+    const d=new Date(Number(h.t));
+    const hm=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+    const sameDay=(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate());
+    const when=sameDay?("今日 "+hm):((d.getMonth()+1)+"/"+d.getDate()+" "+hm);
+    const lenm=h.len?(h.len/1000+"m"):"";
+    const rec=RECORDS.find(r=>r.srcT&&String(r.srcT)===String(h.t));
+    html+=`<div class="hamorow" onclick="openFromHamono('${esc(String(h.t))}')">
+      <div class="hi">
+        <div class="hl1"><span class="hw">${esc(when)}</span><span class="hn">${esc(hamonoDisp(h.name))}</span>${lenm?`<span class="badge">${esc(lenm)}</span>`:""}</div>
+        <div class="hl2">${Number(h.dan)||0}段 → <b>${Number(h.mai)||0}枚</b>${rec?`　<span class="hdone">✎ ${rec.fix}枚修正（${pct(rec.rate)}%）</span>`:""}</div>
+      </div>
+      <div class="hbtn2">${rec?"編集":"修正入力"}</div>
+    </div>`;
+  });
+  html+='</div>';
+  return html;
+}
+function openFromHamono(t){
+  const h=HAMONO.hist.find(x=>String(x.t)===String(t)); if(!h) return;
+  const ex=RECORDS.find(r=>r.srcT&&String(r.srcT)===String(t));
+  if(ex){ openRec(ex.id); return; }
+  openRecNew();
+  editSrcT=String(t);
+  const d=new Date(Number(h.t));
+  $("fDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const m=HAMONO_MAP[h.name]||{};
+  if(m.th==="12"||m.th==="15"){ setThick(m.th); }
+  else { setThick("other"); $("fThickOther").value=""; }
+  $("fProduct").value=m.prod!==undefined?m.prod:hamonoDisp(h.name);
+  setLen(h.len?(h.len/1000+"m"):"");
+  if(h.mai) $("fTotal").value=h.mai;
+  updateLive();
+  setTimeout(()=>{ try{ $("fFix").focus(); $("fFix").select(); }catch(e){} },150);
 }
 
 function trendHtml(){
@@ -520,7 +612,7 @@ function trendHtml(){
   const months=[];
   for(let i=5;i>=0;i--){ let y=ty, m=tm-i; while(m<=0){ m+=12; y--; } months.push(y+"-"+String(m).padStart(2,"0")); }
   const byMonth={}; RECORDS.forEach(r=>{ const k=ym(r.date); if(k) (byMonth[k]=byMonth[k]||[]).push(r); });
-  const stats=months.map(k=>{ const a=agg(byMonth[k]||[]); return {k,rate:a.rate,n:a.n,ng:a.ng}; });
+  const stats=months.map(k=>{ const a=agg(byMonth[k]||[]); return {k,rate:a.rate,n:a.n}; });
   const maxRate=Math.max(0.01,...stats.map(s=>s.rate));
   let bars='<div class="bars">';
   stats.forEach(s=>{
@@ -543,11 +635,13 @@ function recRow(r){
     <div class="info">
       <div class="l1"><span class="date">${esc(fmtMD(r.date))}</span>
         <span class="badge">${esc(thickBadge(r.thickness))}</span>
+        ${r.length?`<span class="badge">${esc(r.length)}</span>`:""}
+        ${r.grade?`<span class="badge">${esc(r.grade)}</span>`:""}
         <span class="badge sort${sortOn?" on":""}">仕分け${sortOn?"あり":"なし"}</span>
         ${r.product?`<span style="font-size:11px;color:var(--sub);font-weight:700">${esc(r.product)}</span>`:""}
       </div>
-      <div class="l2">${r.total}枚中 <span class="rt">${r.ng}枚NG（${pct(r.rate)}%）</span></div>
-      <div class="l3"><span>割れ<b>${r.crack}</b></span><span>埋木<b>${r.plug}</b></span><span>他<b>${r.other}</b></span>${r.by?`<span class="byb">${esc(r.by)}</span>`:""}${r.memo?`<span>📝 ${esc(r.memo)}</span>`:""}</div>
+      <div class="l2">${r.total}枚中 <span class="rt">${r.fix}枚 修正行き（${pct(r.rate)}%）</span></div>
+      <div class="l3">${r.srcT?`<span>🔪 刃物管理から</span>`:""}${r.by?`<span class="byb">${esc(r.by)}</span>`:""}${r.memo?`<span>📝 ${esc(r.memo)}</span>`:""}</div>
     </div>
     <div class="chev">›</div>
   </div>`;
@@ -585,18 +679,25 @@ document.querySelectorAll(".mwrap").forEach(w=>w.addEventListener("click",e=>{ i
 
 /* ===== 不良記録 モーダル ===== */
 function setThick(k){ selThick=k; document.querySelectorAll("#thickSeg .seg").forEach(b=>b.classList.toggle("on",b.dataset.th===k)); $("fThickOther").style.display=k==="other"?"":"none"; }
+function setLen(v){ selLen=v||""; document.querySelectorAll("#lenSeg .seg").forEach(b=>b.classList.toggle("on",b.dataset.len===selLen)); }
 function setSort(v){ selSort=v; document.querySelectorAll("#sortSeg .seg").forEach(b=>b.classList.toggle("on",b.dataset.sort===v)); $("fSortCond").style.display=v==="あり"?"":"none"; }
 document.querySelectorAll("#thickSeg .seg").forEach(b=>b.onclick=()=>setThick(b.dataset.th));
+document.querySelectorAll("#lenSeg .seg").forEach(b=>b.onclick=()=>setLen(selLen===b.dataset.len?"":b.dataset.len));
 document.querySelectorAll("#sortSeg .seg").forEach(b=>b.onclick=()=>setSort(b.dataset.sort));
-["fTotal","fCrack","fPlug","fOther"].forEach(id=>$(id).addEventListener("input",updateLive));
+["fTotal","fFix"].forEach(id=>$(id).addEventListener("input",updateLive));
 function updateLive(){
   const tot=parseInt($("fTotal").value,10)||0;
-  const ng=(parseInt($("fCrack").value,10)||0)+(parseInt($("fPlug").value,10)||0)+(parseInt($("fOther").value,10)||0);
+  const fix=parseInt($("fFix").value,10)||0;
   const box=$("liveBox");
   if(!tot){ box.innerHTML="加工枚数を入力してください"; return; }
-  if(ng>tot){ box.innerHTML='<span style="color:var(--danger)">不良の合計('+ng+'枚)が加工枚数('+tot+'枚)を超えています</span>'; return; }
-  const rate=tot>0?ng/tot:0;
-  box.innerHTML='不良計 <span class="rr">'+ng+'</span> 枚　不良率 <span class="rr">'+pct(rate)+'</span> %';
+  if(fix>tot){ box.innerHTML='<span style="color:var(--danger)">修正行き('+fix+'枚)が加工枚数('+tot+'枚)を超えています</span>'; return; }
+  const rate=tot>0?fix/tot:0;
+  box.innerHTML='修正行き <span class="rr">'+fix+'</span> 枚　修正率 <span class="rr">'+pct(rate)+'</span> %';
+}
+function fillGradeList(){
+  const set=new Set(["無地","上小","小節","節あり"]);
+  RECORDS.forEach(r=>{ if(r.grade) set.add(r.grade); });
+  $("gradeList").innerHTML=[...set].map(g=>'<option value="'+esc(g)+'">').join("");
 }
 function buildRecWhoChips(){
   const w=$("recWhoChips");
@@ -606,13 +707,14 @@ function buildRecWhoChips(){
 }
 $("fab").onclick=()=>{ if(TAB==="rec") openRecNew(); else openThNew(); };
 function openRecNew(){
-  editRecId=null;
-  $("recTitle").textContent="不良を記録";
+  editRecId=null; editSrcT=null;
+  $("recTitle").textContent="修正行きを記録";
   $("fDate").value=TODAY||todayStr();
   setThick("12"); $("fThickOther").value="";
+  setLen(""); $("fGrade").value=""; fillGradeList();
   $("fProduct").value="";
   setSort("なし"); $("fSortCond").value="";
-  $("fTotal").value=""; $("fCrack").value="0"; $("fPlug").value="0"; $("fOther").value="0";
+  $("fTotal").value=""; $("fFix").value="0";
   $("fMemo").value="";
   selWho=localStorage.getItem(WHO_KEY)||MEMBERS[0]||"";
   if(!MEMBERS.includes(selWho)) selWho=MEMBERS[0]||"";
@@ -622,15 +724,16 @@ function openRecNew(){
 }
 function openRec(id){
   const r=RECORDS.find(x=>x.id===id); if(!r) return;
-  editRecId=id;
+  editRecId=id; editSrcT=r.srcT||null;
   $("recTitle").textContent="記録を編集";
   $("fDate").value=r.date;
   const k=normThick(r.thickness);
   if(k==="12"||k==="15"){ setThick(k); $("fThickOther").value=""; }
   else { setThick("other"); $("fThickOther").value=r.thickness||""; }
+  setLen(r.length||""); $("fGrade").value=r.grade||""; fillGradeList();
   $("fProduct").value=r.product||"";
   setSort(r.sorted==="あり"?"あり":"なし"); $("fSortCond").value=r.sortCond||"";
-  $("fTotal").value=r.total; $("fCrack").value=r.crack; $("fPlug").value=r.plug; $("fOther").value=r.other;
+  $("fTotal").value=r.total; $("fFix").value=r.fix;
   $("fMemo").value=r.memo||"";
   selWho=r.by||localStorage.getItem(WHO_KEY)||MEMBERS[0]||"";
   buildRecWhoChips(); updateLive();
@@ -644,12 +747,13 @@ function collectRec(){
   if(selThick==="other"){ thickness=$("fThickOther").value.trim(); if(!thickness){ $("recErr").textContent="厚みを入力してください"; return null; } }
   const total=parseInt($("fTotal").value,10)||0;
   if(!(total>0)){ $("recErr").textContent="加工枚数は1以上を入力してください"; return null; }
-  const crack=parseInt($("fCrack").value,10)||0, plug=parseInt($("fPlug").value,10)||0, other=parseInt($("fOther").value,10)||0;
-  if(crack<0||plug<0||other<0){ $("recErr").textContent="不良枚数はマイナスにできません"; return null; }
-  if(crack+plug+other>total){ $("recErr").textContent="不良の合計が加工枚数を超えています"; return null; }
-  return { id:editRecId||"", date, thickness, product:$("fProduct").value.trim(), sorted:selSort,
-    sortCond:selSort==="あり"?$("fSortCond").value.trim():"", total, crack, plug, other,
-    memo:$("fMemo").value.trim(), by:selWho };
+  const fix=parseInt($("fFix").value,10)||0;
+  if(fix<0){ $("recErr").textContent="修正行きはマイナスにできません"; return null; }
+  if(fix>total){ $("recErr").textContent="修正行きが加工枚数を超えています"; return null; }
+  return { id:editRecId||"", date, thickness, length:selLen, grade:$("fGrade").value.trim(),
+    product:$("fProduct").value.trim(), sorted:selSort,
+    sortCond:selSort==="あり"?$("fSortCond").value.trim():"", total, fix,
+    memo:$("fMemo").value.trim(), by:selWho, srcT:editSrcT||"" };
 }
 $("recSave").onclick=async()=>{
   const rec=collectRec(); if(!rec) return;
