@@ -125,6 +125,10 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
 .hamorow .hl2 b{color:var(--ink);font-size:13px}
 .hamorow .hdone{color:var(--ok);font-weight:800}
 .hbtn2{flex:0 0 auto;border:1.5px solid var(--accent);color:var(--accent2);background:#fff;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800}
+.hamomerge{padding:2px 0 10px;border-bottom:1px dashed var(--line)}
+.hamomerge:last-child{border-bottom:0}
+.hamomerge button{width:100%;border:1.5px dashed var(--accent);background:var(--hl);color:var(--accent2);border-radius:10px;padding:9px 10px;font-size:12px;font-weight:800;text-align:center;line-height:1.5}
+.hamomerge button:active{background:#dff0e8}
 
 /* ===== FAB ===== */
 #fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:40;border:0;border-radius:99px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;padding:15px 22px;box-shadow:0 6px 18px rgba(4,120,87,.4);display:none;align-items:center;gap:7px}
@@ -569,41 +573,77 @@ function hamonoHtml(){
   if(HAMONO.state==="err") return '<div class="hamowrap"><div class="hamoempty">刃物管理ツールから読み込めませんでした（この端末がGoogleログイン済みか確認）<br><button class="whoedit" style="font-size:12px;margin-top:4px" onclick="HAMONO.state=\'loading\';render();fetchHamono()">再読み込み</button></div></div>';
   if(!HAMONO.hist.length) return '<div class="hamowrap"><div class="hamoempty">最近の加工実績はまだありません（刃物管理ツールで「追加」すると出ます）</div></div>';
   const now=new Date();
-  let html='<div class="hamowrap">';
+  const recBySrc=t=>RECORDS.find(r=>r.srcT&&String(r.srcT).split(",").includes(String(t)));
+  // 連続する同一商品×同一長さをグループ化（統合入力ボタン用）
+  const groups=[];
   HAMONO.hist.forEach(h=>{
-    const d=new Date(Number(h.t));
-    const hm=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
-    const sameDay=(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate());
-    const when=sameDay?("今日 "+hm):((d.getMonth()+1)+"/"+d.getDate()+" "+hm);
-    const lenm=h.len?(h.len/1000+"m"):"";
-    const rec=RECORDS.find(r=>r.srcT&&String(r.srcT)===String(h.t));
-    html+=`<div class="hamorow" onclick="openFromHamono('${esc(String(h.t))}')">
-      <div class="hi">
-        <div class="hl1"><span class="hw">${esc(when)}</span><span class="hn">${esc(hamonoDisp(h.name))}</span>${lenm?`<span class="badge">${esc(lenm)}</span>`:""}</div>
-        <div class="hl2">${Number(h.dan)||0}段 → <b>${Number(h.mai)||0}枚</b>${rec?`　<span class="hdone">✎ ${rec.fix}枚修正（${pct(rec.rate)}%）</span>`:""}</div>
-      </div>
-      <div class="hbtn2">${rec?"編集":"修正入力"}</div>
-    </div>`;
+    const g=groups[groups.length-1];
+    if(g&&g.name===h.name&&String(g.len)===String(h.len)) g.items.push(h);
+    else groups.push({name:h.name,len:h.len,items:[h]});
+  });
+  let html='<div class="hamowrap">';
+  groups.forEach(g=>{
+    g.items.forEach(h=>{
+      const d=new Date(Number(h.t));
+      const hm=("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+      const sameDay=(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate());
+      const when=sameDay?("今日 "+hm):((d.getMonth()+1)+"/"+d.getDate()+" "+hm);
+      const lenm=h.len?(h.len/1000+"m"):"";
+      const rec=recBySrc(h.t);
+      const merged=rec&&String(rec.srcT).indexOf(",")>=0;
+      html+=`<div class="hamorow" onclick="openFromHamono('${esc(String(h.t))}')">
+        <div class="hi">
+          <div class="hl1"><span class="hw">${esc(when)}</span><span class="hn">${esc(hamonoDisp(h.name))}</span>${lenm?`<span class="badge">${esc(lenm)}</span>`:""}</div>
+          <div class="hl2">${Number(h.dan)||0}段 → <b>${Number(h.mai)||0}枚</b>${rec?`　<span class="hdone">✎ ${merged?"統合記録済・":""}${rec.fix}枚修正（${pct(rec.rate)}%）</span>`:""}</div>
+        </div>
+        <div class="hbtn2">${rec?"編集":"修正入力"}</div>
+      </div>`;
+    });
+    if(g.items.length>=2&&!g.items.some(h=>recBySrc(h.t))){
+      const dan=g.items.reduce((s,h)=>s+(Number(h.dan)||0),0);
+      const mai=g.items.reduce((s,h)=>s+(Number(h.mai)||0),0);
+      const lenm=g.len?(g.len/1000+"m"):"";
+      const ids=g.items.map(h=>String(h.t)).join("_");
+      html+=`<div class="hamomerge"><button type="button" onclick="openFromHamonoMerge('${esc(ids)}')">🔗 連続する${esc(hamonoDisp(g.name))}${lenm?"("+esc(lenm)+")":""} ${g.items.length}件を統合して入力（計${dan}段 → ${mai}枚）</button></div>`;
+    }
   });
   html+='</div>';
   return html;
 }
-function openFromHamono(t){
-  const h=HAMONO.hist.find(x=>String(x.t)===String(t)); if(!h) return;
-  const ex=RECORDS.find(r=>r.srcT&&String(r.srcT)===String(t));
-  if(ex){ openRec(ex.id); return; }
+function hamonoPrefill_(items){
+  // items=履歴（新しい順）。1件なら単発、複数なら統合入力
   openRecNew();
-  editSrcT=String(t);
-  const d=new Date(Number(h.t));
+  editSrcT=items.map(h=>String(h.t)).join(",");
+  const newest=items[0];
+  const d=new Date(Number(newest.t));
   $("fDate").value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  const m=HAMONO_MAP[h.name]||{};
+  const m=HAMONO_MAP[newest.name]||{};
   if(m.th==="12"||m.th==="15"){ setThick(m.th); }
   else { setThick("other"); $("fThickOther").value=""; }
-  $("fProduct").value=m.prod!==undefined?m.prod:hamonoDisp(h.name);
-  setLen(h.len?(h.len/1000+"m"):"");
-  if(h.mai) $("fTotal").value=h.mai;
+  $("fProduct").value=m.prod!==undefined?m.prod:hamonoDisp(newest.name);
+  setLen(newest.len?(newest.len/1000+"m"):"");
+  const mai=items.reduce((s,h)=>s+(Number(h.mai)||0),0);
+  if(mai) $("fTotal").value=mai;
+  if(items.length>1){
+    const dan=items.reduce((s,h)=>s+(Number(h.dan)||0),0);
+    $("fMemo").value="刃物管理"+items.length+"件を統合（計"+dan+"段）";
+  }
   updateLive();
   setTimeout(()=>{ try{ $("fFix").focus(); $("fFix").select(); }catch(e){} },150);
+}
+function openFromHamono(t){
+  const h=HAMONO.hist.find(x=>String(x.t)===String(t)); if(!h) return;
+  const ex=RECORDS.find(r=>r.srcT&&String(r.srcT).split(",").includes(String(t)));
+  if(ex){ openRec(ex.id); return; }
+  hamonoPrefill_([h]);
+}
+function openFromHamonoMerge(tsStr){
+  const ts=tsStr.split("_");
+  const items=HAMONO.hist.filter(h=>ts.includes(String(h.t)));
+  if(!items.length) return;
+  const ex=RECORDS.find(r=>r.srcT&&String(r.srcT).split(",").some(t=>ts.includes(t)));
+  if(ex){ openRec(ex.id); return; }
+  hamonoPrefill_(items);
 }
 
 function trendHtml(){
@@ -763,7 +803,8 @@ $("recSave").onclick=async()=>{
     const j=await postAction({action:"saveRecord",record:rec});
     if(!j.ok) throw new Error(j.error||"保存できませんでした");
     $("recWrap").classList.remove("show");
-    toast(editRecId?"更新しました":"記録しました");
+    const rr=rec.total>0?rec.fix/rec.total:0;
+    toast((editRecId?"更新しました":"記録しました")+"：加工"+rec.total+"枚中 "+rec.fix+"枚が修正行き（修正率 "+pct(rr)+"%）");
     await fetchAll();
   }catch(e){ $("recErr").textContent="保存エラー: "+e.message; }
   finally{ btn.disabled=false; btn.textContent="保存する"; }
