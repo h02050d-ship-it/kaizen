@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#059669">
+<title>効率化ボード｜林材木店</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23059669'/><text x='51' y='46.5' font-size='60' text-anchor='middle' dominant-baseline='central' fill='%23ffffff' font-family='sans-serif' font-weight='bold'>効</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23059669'/><text x='51' y='46.5' font-size='60' text-anchor='middle' dominant-baseline='central' fill='%23ffffff' font-family='sans-serif' font-weight='bold'>効</text></svg>">
+<meta name="apple-mobile-web-app-title" content="効率化ボード">
+<style>
+:root{
+  --bg:#eef5f1; --card:#ffffff; --ink:#1f2e28; --sub:#78897f; --line:#dce8e2;
+  --accent:#059669; --accent2:#047857; --danger:#d15a3c; --ok:#3d8a4f; --warn:#e08a1e; --info:#2f74c0;
+  --chip:#e3efe9; --hl:#f0f7f3;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:96px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px}
+
+/* ===== ヘッダー ===== */
+header{position:sticky;top:0;z-index:30;background:var(--accent);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 10px rgba(31,46,40,.18)}
+header .ttl{font-size:16px;font-weight:800;letter-spacing:.04em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .ttl small{display:block;font-size:10px;font-weight:600;opacity:.78;letter-spacing:.1em}
+.hbtn{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.hbtn:active{background:rgba(255,255,255,.28)}
+#srcBadge{border:0;background:rgba(0,0,0,.16);color:#d6f0e4;border-radius:99px;padding:5px 10px;font-size:10.5px;font-weight:700}
+#srcBadge.err{color:#ffd9c9}
+
+/* ===== タブ ===== */
+.tabs{position:sticky;top:calc(env(safe-area-inset-top) + 54px);z-index:25;display:flex;gap:6px;padding:10px 14px 8px;background:linear-gradient(var(--bg) 82%,rgba(238,245,241,0));max-width:760px;margin:0 auto}
+.tab{flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--sub);border-radius:12px;padding:9px 0;font-size:13px;font-weight:800}
+.tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab .n{font-size:10.5px;margin-left:3px;opacity:.75}
+
+/* ===== 本文 ===== */
+main{padding:4px 14px 0;max-width:760px;margin:0 auto}
+.sechead{font-size:12px;font-weight:800;color:var(--sub);letter-spacing:.06em;margin:16px 2px 8px;display:flex;align-items:center;gap:6px}
+.sechead::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ===== 期間チップ ===== */
+.pchips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 2px 2px}
+.pchip{border:1.5px solid var(--line);background:var(--card);color:var(--sub);border-radius:99px;padding:7px 14px;font-size:12.5px;font-weight:800}
+.pchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ===== 集計カード ===== */
+.sumgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.sumcard{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cc,var(--accent));border-radius:14px;padding:12px 14px;box-shadow:0 1px 5px rgba(31,46,40,.06)}
+.sumcard .th{font-size:13px;font-weight:800;color:var(--ink)}
+.sumcard .th .sub{font-size:10.5px;font-weight:700;color:var(--sub);margin-left:4px}
+.sumcard .rate{font-size:32px;font-weight:900;line-height:1.1;margin:4px 0 2px;color:var(--cc,var(--accent))}
+.sumcard .rate small{font-size:14px;font-weight:800}
+.sumcard .cnt{font-size:11.5px;color:var(--sub);font-weight:700}
+.sumcard .bd{font-size:10.5px;color:var(--sub);margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.sumcard .bd b{color:var(--ink)}
+
+/* ===== 仕分け比較 ===== */
+.cmpwrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:0 1px 5px rgba(31,46,40,.06)}
+.cmprow{padding:9px 0;border-bottom:1px dashed var(--line)}
+.cmprow:last-child{border-bottom:0}
+.cmprow .cth{font-size:12.5px;font-weight:800;margin-bottom:7px}
+.cmpcols{display:flex;gap:10px}
+.cmpcol{flex:1;background:var(--hl);border-radius:10px;padding:8px 10px;text-align:center}
+.cmpcol .lb{font-size:10.5px;font-weight:800;color:var(--sub)}
+.cmpcol .v{font-size:22px;font-weight:900;line-height:1.2;margin-top:2px}
+.cmpcol .c2{font-size:10px;color:var(--sub);font-weight:700}
+.cmpcol.nd .v{color:var(--sub);font-size:13px;font-weight:800;padding:5px 0}
+.cmpcol.win{background:#e7f4ec}
+.cmpcol.win .v{color:var(--ok)}
+
+/* ===== 月別ミニ棒グラフ ===== */
+.trend{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 14px 8px;box-shadow:0 1px 5px rgba(31,46,40,.06)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:130px}
+.barcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.barcol .pct{font-size:10.5px;font-weight:800;color:var(--ink);margin-bottom:3px;white-space:nowrap}
+.barcol .bar{width:70%;max-width:34px;background:linear-gradient(var(--accent),var(--accent2));border-radius:6px 6px 0 0;min-height:3px;transition:height .3s}
+.barcol.empty .bar{background:var(--line)}
+.barcol .mo{font-size:10px;font-weight:700;color:var(--sub);margin-top:6px;white-space:nowrap}
+.barcol .cn{font-size:9px;color:var(--sub)}
+
+/* ===== 履歴リスト ===== */
+.rec{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cc,var(--accent));border-radius:13px;padding:11px 13px;margin-bottom:9px;box-shadow:0 1px 5px rgba(31,46,40,.06);display:flex;align-items:center;gap:11px}
+.rec .info{flex:1;min-width:0}
+.rec .l1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rec .date{font-size:13px;font-weight:800}
+.rec .l2{font-size:14px;font-weight:800;margin-top:4px}
+.rec .l2 .rt{color:var(--cc,var(--accent))}
+.rec .l3{font-size:10.5px;color:var(--sub);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rec .l3 b{color:var(--ink)}
+.rec .chev{flex:0 0 auto;color:var(--sub);font-size:18px}
+.badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--accent2)}
+.badge.sort{background:#e6eef8;color:var(--info)}
+.badge.sort.on{background:#e7f4ec;color:var(--ok)}
+.byb{font-size:10px;font-weight:800;color:#fff;background:var(--accent);border-radius:99px;padding:2px 9px}
+
+/* ===== 改善カード ===== */
+.tcard{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cc,#9ab);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 5px rgba(31,46,40,.06)}
+.tcard .th{display:flex;align-items:center;gap:7px}
+.tcard .th .t{font-size:15px;font-weight:800;flex:1;min-width:0}
+.tcard .body{font-size:12.5px;color:var(--ink);opacity:.9;line-height:1.5;margin-top:6px}
+.tcard .body .lbl{font-size:10px;font-weight:800;color:var(--sub);display:block}
+.tcard .meta{font-size:10.5px;color:var(--sub);margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sbadge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px}
+.sb-out{background:#e9edeb;color:#5f6f67}
+.sb-do{background:#e6eef8;color:var(--info)}
+.sb-chk{background:#fbeed6;color:var(--warn)}
+.sb-fin{background:#e7f4ec;color:var(--ok)}
+.catb{font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--accent2)}
+
+.empty{text-align:center;color:var(--sub);padding:52px 0;font-size:13px;line-height:2}
+.empty .big{font-size:34px}
+
+/* ===== FAB ===== */
+#fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:40;border:0;border-radius:99px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;padding:15px 22px;box-shadow:0 6px 18px rgba(4,120,87,.4);display:none;align-items:center;gap:7px}
+#fab:active{transform:scale(.96)}
+
+/* ===== モーダル共通 ===== */
+.mwrap{position:fixed;inset:0;z-index:50;display:none;align-items:flex-end;justify-content:center;background:rgba(31,46,40,.45)}
+.mwrap.show{display:flex}
+.modal{background:var(--card);width:100%;max-width:640px;max-height:90vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:up .18s ease}
+@media(min-width:700px){.mwrap{align-items:center}.modal{border-radius:20px}}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.mhead{display:flex;align-items:center;padding:16px 18px 10px}
+.mhead h2{font-size:16px;font-weight:800;flex:1}
+.mx{border:0;background:var(--chip);border-radius:99px;width:32px;height:32px;font-size:14px;color:var(--sub)}
+.mbody{overflow-y:auto;padding:2px 18px 18px;-webkit-overflow-scrolling:touch}
+.fld{margin-bottom:13px}
+.fld label{display:block;font-size:12px;font-weight:800;color:var(--sub);margin-bottom:5px}
+.fld label em{color:var(--danger);font-style:normal;margin-left:2px}
+.fld input[type=text],.fld input[type=number],.fld input[type=date],.fld select,.fld textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:11px;background:#fff;outline:none}
+.fld textarea{min-height:52px;resize:vertical;line-height:1.5}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--accent)}
+.row2{display:flex;gap:10px}
+.row2>.fld{flex:1}
+.row3{display:flex;gap:8px}
+.row3>.fld{flex:1}
+.segrow{display:flex;gap:6px;flex-wrap:wrap}
+.seg{border:1.5px solid var(--line);background:#fff;border-radius:11px;padding:11px 18px;font-size:14px;font-weight:800;color:var(--sub)}
+.seg.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.livebox{background:var(--hl);border-radius:11px;padding:11px 13px;font-size:13px;font-weight:800;text-align:center;margin-bottom:13px;color:var(--ink)}
+.livebox .rr{color:var(--accent);font-size:18px}
+.whochips{display:flex;flex-wrap:wrap;gap:8px}
+.who{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:11px 18px;font-size:14px;font-weight:800;color:var(--ink)}
+.who.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.whoedit{border:0;background:none;font-size:11.5px;color:var(--sub);text-decoration:underline;padding:4px}
+.merr{color:var(--danger);font-size:12px;font-weight:700;text-align:center;min-height:18px;padding-top:6px}
+.msave{width:100%;border:0;border-radius:13px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;padding:14px 0;margin-top:4px}
+.msave:disabled{opacity:.5}
+.mdel{width:100%;border:1.5px solid #e8cfc3;background:#fff;border-radius:13px;color:var(--danger);font-size:13px;font-weight:800;padding:12px 0;margin-top:10px}
+
+/* ===== ログインゲート ===== */
+#gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;align-items:center;justify-content:center;padding:22px}
+.gcard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 24px;width:100%;max-width:360px;box-shadow:0 10px 40px rgba(31,46,40,.12);text-align:center}
+.gcard .logo{font-size:40px}
+.gcard h1{font-size:17px;font-weight:800;margin:8px 0 2px}
+.gcard p{font-size:11.5px;color:var(--sub);margin-bottom:18px}
+.gcard input{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:11px;margin-bottom:10px;outline:none;background:#fff}
+.gcard input:focus{border-color:var(--accent)}
+.pwrow{position:relative}
+.pwrow button{position:absolute;right:4px;top:4px;border:0;background:none;font-size:15px;padding:8px}
+.gkeep{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--sub);margin:4px 0 14px}
+.gkeep input{width:16px;height:16px;accent-color:var(--accent)}
+#gateBtn{width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:800;padding:13px 0}
+#gateErr{color:var(--danger);font-size:12px;font-weight:700;min-height:18px;margin-top:10px}
+
+/* ===== トースト ===== */
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 86px);transform:translateX(-50%) translateY(20px);z-index:80;background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:11px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%)}
+.spin{display:inline-block;width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="ttl">📉 効率化ボード<small>HAYASHI LUMBER — ムダ・ロス管理</small></div>
+  <button id="srcBadge">…</button>
+  <a class="hbtn" id="sheetBtn" target="_blank" style="display:none">📊</a>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-tab="rec">📉 不良記録</button>
+  <button class="tab" data-tab="kaizen">💡 改善リスト<span class="n" id="nKaizen"></span></button>
+</div>
+
+<main id="list"></main>
+
+<button id="fab">＋ 記録</button>
+
+<!-- 不良記録 追加・編集 -->
+<div class="mwrap" id="recWrap">
+  <div class="modal">
+    <div class="mhead"><h2 id="recTitle">不良を記録</h2><button class="mx" data-close="recWrap">✕</button></div>
+    <div class="mbody">
+      <div class="fld"><label>日付<em>*</em></label><input type="date" id="fDate"></div>
+      <div class="fld"><label>厚み<em>*</em></label>
+        <div class="segrow" id="thickSeg">
+          <button type="button" class="seg" data-th="12">12mm</button>
+          <button type="button" class="seg" data-th="15">15mm</button>
+          <button type="button" class="seg" data-th="other">その他</button>
+        </div>
+        <input type="text" id="fThickOther" placeholder="厚みを入力（例：18mm）" style="display:none;margin-top:8px">
+      </div>
+      <div class="fld"><label>商品メモ</label><input type="text" id="fProduct" placeholder="例：桧羽目板（任意）"></div>
+      <div class="fld"><label>原板の仕分け<em>*</em></label>
+        <div class="segrow" id="sortSeg">
+          <button type="button" class="seg" data-sort="なし">仕分けなし</button>
+          <button type="button" class="seg" data-sort="あり">仕分けあり</button>
+        </div>
+        <input type="text" id="fSortCond" placeholder="仕分け条件（例：生き節が端に少ない板を選別）" style="display:none;margin-top:8px">
+      </div>
+      <div class="fld"><label>加工枚数<em>*</em></label><input type="number" id="fTotal" min="1" inputmode="numeric" placeholder="例：60"></div>
+      <div class="row3">
+        <div class="fld"><label>割れ</label><input type="number" id="fCrack" min="0" value="0" inputmode="numeric"></div>
+        <div class="fld"><label>埋木飛び</label><input type="number" id="fPlug" min="0" value="0" inputmode="numeric"></div>
+        <div class="fld"><label>その他不良</label><input type="number" id="fOther" min="0" value="0" inputmode="numeric"></div>
+      </div>
+      <div class="livebox" id="liveBox">加工枚数を入力してください</div>
+      <div class="fld"><label>メモ</label><textarea id="fMemo" placeholder="気づいたこと・原因の推測など（任意）"></textarea></div>
+      <div class="fld"><label>記録者</label>
+        <div class="whochips" id="recWhoChips"></div>
+        <div style="text-align:right;margin-top:6px"><button class="whoedit" id="memberEditBtn">メンバーを編集</button></div>
+      </div>
+      <div class="merr" id="recErr"></div>
+      <button class="msave" id="recSave">保存する</button>
+      <button class="mdel" id="recDel" style="display:none">🗑 この記録を削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改善 追加・編集 -->
+<div class="mwrap" id="thWrap">
+  <div class="modal">
+    <div class="mhead"><h2 id="thTitle">改善アイテムを追加</h2><button class="mx" data-close="thWrap">✕</button></div>
+    <div class="mbody">
+      <div class="row2">
+        <div class="fld"><label>分類</label>
+          <select id="tCat"><option>現場</option><option>事務</option><option>その他</option></select>
+        </div>
+        <div class="fld"><label>状態</label>
+          <select id="tStatus"><option>洗い出し</option><option>対策中</option><option>効果確認</option><option>完了</option></select>
+        </div>
+      </div>
+      <div class="fld"><label>タイトル<em>*</em></label><input type="text" id="tTitle" placeholder="例：モルダーの埋木飛びを減らす"></div>
+      <div class="fld"><label>現状のムダ</label><textarea id="tWaste" placeholder="いま何がムダ・ロスになっているか"></textarea></div>
+      <div class="fld"><label>対策案</label><textarea id="tPlan" placeholder="どう改善するか"></textarea></div>
+      <div class="fld"><label>メモ</label><textarea id="tMemo" placeholder="補足（任意）"></textarea></div>
+      <div class="merr" id="thErr"></div>
+      <button class="msave" id="thSave">保存する</button>
+      <button class="mdel" id="thDel" style="display:none">🗑 この項目を削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- メンバー編集 -->
+<div class="mwrap" id="memberWrap">
+  <div class="modal">
+    <div class="mhead"><h2>👷 メンバー編集</h2><button class="mx" data-close="memberWrap">✕</button></div>
+    <div class="mbody">
+      <div class="fld"><label>メンバー（1行に1人）</label><textarea id="memberText" style="min-height:120px"></textarea></div>
+      <div class="merr" id="memberErr"></div>
+      <button class="msave" id="memberSave">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ログインゲート -->
+<div id="gate">
+  <div class="gcard">
+    <div class="logo">📉</div>
+    <h1>効率化ボード</h1>
+    <p>林材木店のムダ・ロス管理ツール</p>
+    <input id="gateMail" type="email" placeholder="メールアドレス" autocomplete="username">
+    <div class="pwrow">
+      <input id="gatePass" type="password" placeholder="パスワード" autocomplete="current-password">
+      <button id="pwEye" type="button">👁</button>
+    </div>
+    <label class="gkeep"><input type="checkbox" id="gateKeep" checked>この端末でログインを保持する</label>
+    <button id="gateBtn">ログイン</button>
+    <div id="gateErr"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ===== 接続設定 ===== */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyCuoNKlyC3x9AN1XA3eNe1RXOld21X5ubvLobrqvB3NvArugqcPsdmP-VgzBbw2-X3/exec';
+const CRED_KEY="hayazai_kaizen_cred";
+const CACHE_KEY="hayazai_kaizen_cache";
+const WHO_KEY="hayazai_kaizen_who";
+
+/* ===== 状態 ===== */
+let RECORDS=[], THEMES=[], MEMBERS=[], SHEET_URL="", TODAY="";
+let TAB="rec";
+let PERIOD="30d";        // 30d | thism | lastm | all
+let TSTATUS="all";       // 改善リストの状態フィルタ
+let editRecId=null;
+let editThId=null;
+let selThick="12";       // '12' | '15' | 'other'
+let selSort="なし";      // 'なし' | 'あり'
+let selWho="";
+
+/* ===== 資格情報 ===== */
+function creds(){ try{ return JSON.parse(localStorage.getItem(CRED_KEY)||sessionStorage.getItem(CRED_KEY)||"{}"); }catch(e){ return {}; } }
+function saveCreds(email,pass,keep){ const v=JSON.stringify({email,pass}); if(keep){ localStorage.setItem(CRED_KEY,v); sessionStorage.removeItem(CRED_KEY); } else { sessionStorage.setItem(CRED_KEY,v); localStorage.removeItem(CRED_KEY); } }
+function clearCreds(){ localStorage.removeItem(CRED_KEY); sessionStorage.removeItem(CRED_KEY); localStorage.removeItem(CACHE_KEY); }
+function authQS(){ const c=creds(); return "email="+encodeURIComponent(c.email||"")+"&pass="+encodeURIComponent(c.pass||""); }
+
+/* ===== ユーティリティ ===== */
+const $=id=>document.getElementById(id);
+function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function b64utf8(s){ const b=new TextEncoder().encode(s); let x=""; for(let i=0;i<b.length;i+=0x8000){ x+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); } return btoa(x); }
+let toastTimer=null;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),2400); }
+
+/* ===== 日付 ===== */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function fmtMD(s){ if(!s) return ""; const p=s.split("-"); return (+p[1])+"/"+(+p[2]); }
+function ym(s){ return s?s.slice(0,7):""; }
+function pct(r){ return (Math.round(r*1000)/10).toFixed(1); }
+
+/* 厚み正規化＆ラベル */
+function normThick(t){ t=String(t||"").trim(); if(t==="12"||t==="12mm") return "12"; if(t==="15"||t==="15mm") return "15"; return t||"その他"; }
+function thickLabel(k){ if(k==="12") return "12mm厚"; if(k==="15") return "15mm厚"; return (k==="その他"||!k)?"その他":k; }
+function thickBadge(t){ const k=normThick(t); if(k==="12")return "12mm"; if(k==="15")return "15mm"; return k; }
+function thickColor(k){ if(k==="12") return "var(--danger)"; if(k==="15") return "var(--info)"; return "var(--sub)"; }
+
+/* ===== 起動 ===== */
+function boot(){
+  const c=creds();
+  if(c.email&&c.pass){
+    $("gate").style.display="none";
+    const cache=loadCache();
+    if(cache){ RECORDS=cache.records||[]; THEMES=cache.themes||[]; MEMBERS=cache.members||[]; SHEET_URL=cache.sheetUrl||""; render(); }
+    else showLoadingList();
+    fetchAll();
+  } else showGate();
+}
+function showGate(err){ $("gate").style.display="flex"; $("gateErr").textContent=err||""; setTimeout(()=>$("gateMail").focus(),60); }
+$("pwEye").onclick=()=>{ const i=$("gatePass"); const s=i.type==="password"; i.type=s?"text":"password"; $("pwEye").textContent=s?"🙈":"👁"; };
+["gateMail","gatePass"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") submitGate(); }));
+$("gateBtn").onclick=submitGate;
+function submitGate(){
+  const email=$("gateMail").value.trim(), pass=$("gatePass").value;
+  if(!email||!pass) return;
+  saveCreds(email,pass,$("gateKeep").checked);
+  $("gate").style.display="none";
+  showLoadingList();
+  fetchAll();
+}
+$("srcBadge").onclick=()=>{ if(confirm("ログアウトしますか？")){ clearCreds(); location.reload(); } };
+
+function showLoadingList(){ $("list").innerHTML='<div class="empty"><div class="spin"></div>読み込み中…<br><span style="font-size:10.5px">初回は20秒ほどかかることがあります</span></div>'; }
+function setBadge(state){ const b=$("srcBadge"); if(state==="live"){ b.className=""; b.textContent="● ライブ"; } else if(state==="load"){ b.className=""; b.textContent="● 読込中…"; } else { b.className="err"; b.textContent="● オフライン"; } }
+
+/* ===== データ取得 ===== */
+async function fetchOnce(url,ms){
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),ms);
+  try{ const r=await fetch(url,{signal:ctrl.signal}); const t=await r.text(); if(!t||t.trim()[0]!=="{") throw new Error("bad response"); return JSON.parse(t); }
+  finally{ clearTimeout(to); }
+}
+async function fetchAll(){
+  setBadge("load");
+  let j=null;
+  for(let i=0;i<3&&!j;i++){ try{ j=await fetchOnce(GAS_URL+"?api=all&"+authQS(), i===0?25000:12000); }catch(e){ j=null; } }
+  if(!j){ setBadge("err"); if(!RECORDS.length&&!THEMES.length) $("list").innerHTML='<div class="empty"><div class="big">📡</div>読み込みに失敗しました<br><button class="whoedit" style="margin-top:14px;font-size:13px" onclick="fetchAll()">再読み込み</button></div>'; return; }
+  if(!j.ok){ if(j.error==="unauthorized"){ clearCreds(); showGate("メールまたはパスワードが違います"); } else { setBadge("err"); toast("エラー: "+(j.error||"不明")); } return; }
+  RECORDS=j.records||[]; THEMES=j.themes||[]; MEMBERS=j.members||[]; SHEET_URL=j.sheetUrl||""; TODAY=j.today||todayStr();
+  try{ localStorage.setItem(CACHE_KEY,JSON.stringify({records:RECORDS,themes:THEMES,members:MEMBERS,sheetUrl:SHEET_URL})); }catch(e){}
+  const sb=$("sheetBtn"); if(SHEET_URL){ sb.href=SHEET_URL; sb.style.display=""; }
+  setBadge("live"); render();
+}
+function loadCache(){ try{ const s=localStorage.getItem(CACHE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
+
+async function postAction(payload){
+  const c=creds();
+  const body=b64utf8(JSON.stringify({...payload,email:c.email,pass:c.pass}));
+  const r=await fetch(GAS_URL,{method:"POST",body:body});
+  const t=await r.text();
+  if(!t||t.trim()[0]!=="{") throw new Error("bad response");
+  return JSON.parse(t);
+}
+
+/* ===== タブ ===== */
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b)); render(); });
+
+/* ===== 期間フィルタ ===== */
+function periodStart(){
+  const t=TODAY||todayStr();
+  if(PERIOD==="all") return "0000-00-00";
+  if(PERIOD==="thism") return t.slice(0,7)+"-01";
+  if(PERIOD==="lastm"){ const [y,m]=t.split("-").map(Number); const py=m===1?y-1:y, pm=m===1?12:m-1; return py+"-"+String(pm).padStart(2,"0")+"-01"; }
+  // 30d
+  const dd=new Date(t); dd.setDate(dd.getDate()-29);
+  return dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");
+}
+function periodEnd(){
+  const t=TODAY||todayStr();
+  if(PERIOD==="lastm"){ return t.slice(0,7)+"-01"; } // 先月末日まで＝今月1日未満
+  return "9999-99-99";
+}
+function inPeriod(dateStr){
+  if(PERIOD==="all") return true;
+  if(PERIOD==="lastm"){ const s=periodStart(); return dateStr>=s && dateStr<periodEnd(); }
+  return dateStr>=periodStart();
+}
+function periodRecords(){ return RECORDS.filter(r=>r.date&&inPeriod(r.date)); }
+
+/* ===== 集計 ===== */
+function agg(list){
+  let total=0,ng=0,crack=0,plug=0,other=0;
+  list.forEach(r=>{ total+=r.total; ng+=r.ng; crack+=r.crack; plug+=r.plug; other+=r.other; });
+  return {total,ng,crack,plug,other,rate:total>0?ng/total:0,n:list.length};
+}
+
+/* ===== 描画 ===== */
+function render(){
+  const openTheme=THEMES.filter(t=>t.status!=="完了").length;
+  $("nKaizen").textContent=openTheme?openTheme:"";
+  $("fab").style.display="flex";
+  $("fab").innerHTML=TAB==="rec"?"＋ 記録":"＋ 追加";
+  if(TAB==="rec") renderRec(); else renderKaizen();
+}
+
+function renderRec(){
+  const list=periodRecords();
+  let html="";
+
+  // 期間チップ
+  html+='<div class="pchips">'
+    +pchip("30d","直近30日")+pchip("thism","今月")+pchip("lastm","先月")+pchip("all","全期間")
+    +'</div>';
+
+  if(!RECORDS.length){
+    html+='<div class="empty"><div class="big">📉</div>まだ不良記録がありません<br>右下の「＋ 記録」から、モルダー加工の<br>「何枚中何枚だめだったか」を記録できます</div>';
+    $("list").innerHTML=html; bindPchips(); return;
+  }
+
+  // 厚み別サマリー
+  const groups={}; // key -> list
+  list.forEach(r=>{ const k=normThick(r.thickness); (groups[k]=groups[k]||[]).push(r); });
+  const order=["12","15"]; Object.keys(groups).forEach(k=>{ if(!order.includes(k)) order.push(k); });
+  const shownKeys=order.filter(k=>groups[k]&&groups[k].length);
+
+  if(!shownKeys.length){
+    html+='<div class="empty" style="padding:36px 0"><div class="big">🗓</div>この期間の記録はありません<br><span style="font-size:11px">上の期間を変えてみてください</span></div>';
+    $("list").innerHTML=html; bindPchips(); return;
+  }
+
+  html+='<div class="sechead">📊 厚み別の不良率</div><div class="sumgrid">';
+  shownKeys.forEach(k=>{
+    const a=agg(groups[k]); const cc=thickColor(k);
+    html+=`<div class="sumcard" style="--cc:${cc}">
+      <div class="th">${esc(thickLabel(k))}<span class="sub">${a.n}件</span></div>
+      <div class="rate">${pct(a.rate)}<small>%</small></div>
+      <div class="cnt">加工 ${a.total}枚 中 不良 ${a.ng}枚</div>
+      <div class="bd"><span>割れ<b>${a.crack}</b></span><span>埋木<b>${a.plug}</b></span><span>他<b>${a.other}</b></span></div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // 仕分け比較
+  html+='<div class="sechead">🔀 仕分けなし / あり 比較</div>';
+  html+='<div class="cmpwrap">';
+  shownKeys.forEach(k=>{
+    const none=groups[k].filter(r=>r.sorted!=="あり");
+    const yes=groups[k].filter(r=>r.sorted==="あり");
+    const an=agg(none), ay=agg(yes);
+    const bothHave=an.n&&ay.n;
+    const win=bothHave?(ay.rate<an.rate?"yes":(an.rate<ay.rate?"none":"")):"";
+    html+=`<div class="cmprow"><div class="cth">${esc(thickLabel(k))}</div><div class="cmpcols">
+      ${cmpCol("仕分けなし",an,win==="none")}
+      ${cmpCol("仕分けあり",ay,win==="yes")}
+    </div>${bothHave?"":'<div class="cnt" style="font-size:10px;color:var(--sub);margin-top:6px">比較データなし（両方の記録がそろうと差が見えます）</div>'}</div>`;
+  });
+  html+='</div>';
+
+  // 月別推移（直近6ヶ月・厚み全体・期間フィルタ非依存）
+  html+='<div class="sechead">📈 月別の不良率（直近6ヶ月・全厚み）</div>';
+  html+=trendHtml();
+
+  // 履歴
+  html+='<div class="sechead">🕐 記録一覧（新しい順）</div>';
+  list.forEach(r=>html+=recRow(r));
+
+  $("list").innerHTML=html; bindPchips();
+}
+
+function pchip(k,label){ return `<button class="pchip${PERIOD===k?" on":""}" data-p="${k}">${label}</button>`; }
+function bindPchips(){ document.querySelectorAll(".pchip").forEach(b=>b.onclick=()=>{ PERIOD=b.dataset.p; render(); }); }
+
+function cmpCol(lb,a,isWin){
+  if(!a.n) return `<div class="cmpcol nd"><div class="lb">${lb}</div><div class="v">—</div><div class="c2">記録なし</div></div>`;
+  return `<div class="cmpcol${isWin?" win":""}"><div class="lb">${lb}</div><div class="v">${pct(a.rate)}%</div><div class="c2">${a.ng}/${a.total}枚・${a.n}件</div></div>`;
+}
+
+function trendHtml(){
+  const t=TODAY||todayStr();
+  const [ty,tm]=t.split("-").map(Number);
+  const months=[];
+  for(let i=5;i>=0;i--){ let y=ty, m=tm-i; while(m<=0){ m+=12; y--; } months.push(y+"-"+String(m).padStart(2,"0")); }
+  const byMonth={}; RECORDS.forEach(r=>{ const k=ym(r.date); if(k) (byMonth[k]=byMonth[k]||[]).push(r); });
+  const stats=months.map(k=>{ const a=agg(byMonth[k]||[]); return {k,rate:a.rate,n:a.n,ng:a.ng}; });
+  const maxRate=Math.max(0.01,...stats.map(s=>s.rate));
+  let bars='<div class="bars">';
+  stats.forEach(s=>{
+    const h=s.n?Math.max(4,Math.round(s.rate/maxRate*100)):3;
+    bars+=`<div class="barcol${s.n?"":" empty"}">
+      <div class="pct">${s.n?pct(s.rate)+"%":"—"}</div>
+      <div class="bar" style="height:${h}%"></div>
+      <div class="mo">${(+s.k.slice(5))}月</div>
+      <div class="cn">${s.n?s.n+"件":""}</div>
+    </div>`;
+  });
+  bars+='</div>';
+  return '<div class="trend">'+bars+'</div>';
+}
+
+function recRow(r){
+  const k=normThick(r.thickness), cc=thickColor(k);
+  const sortOn=r.sorted==="あり";
+  return `<div class="rec" style="--cc:${cc}" onclick="openRec('${esc(r.id)}')">
+    <div class="info">
+      <div class="l1"><span class="date">${esc(fmtMD(r.date))}</span>
+        <span class="badge">${esc(thickBadge(r.thickness))}</span>
+        <span class="badge sort${sortOn?" on":""}">仕分け${sortOn?"あり":"なし"}</span>
+        ${r.product?`<span style="font-size:11px;color:var(--sub);font-weight:700">${esc(r.product)}</span>`:""}
+      </div>
+      <div class="l2">${r.total}枚中 <span class="rt">${r.ng}枚NG（${pct(r.rate)}%）</span></div>
+      <div class="l3"><span>割れ<b>${r.crack}</b></span><span>埋木<b>${r.plug}</b></span><span>他<b>${r.other}</b></span>${r.by?`<span class="byb">${esc(r.by)}</span>`:""}${r.memo?`<span>📝 ${esc(r.memo)}</span>`:""}</div>
+    </div>
+    <div class="chev">›</div>
+  </div>`;
+}
+
+/* ===== 改善リスト ===== */
+const ST=[["all","すべて"],["洗い出し","洗い出し"],["対策中","対策中"],["効果確認","効果確認"],["完了","完了"]];
+function statusClass(s){ return s==="完了"?"sb-fin":s==="効果確認"?"sb-chk":s==="対策中"?"sb-do":"sb-out"; }
+function renderKaizen(){
+  let html='<div class="pchips">'+ST.map(([k,l])=>`<button class="pchip${TSTATUS===k?" on":""}" data-s="${k}">${l}</button>`).join("")+'</div>';
+  const list=THEMES.filter(t=>TSTATUS==="all"||t.status===TSTATUS);
+  if(!THEMES.length){
+    html+='<div class="empty"><div class="big">💡</div>まだ改善アイテムがありません<br>現場・事務のムダを見つけたら<br>右下の「＋ 追加」から書き留めましょう</div>';
+  } else if(!list.length){
+    html+='<div class="empty" style="padding:36px 0">この状態の項目はありません</div>';
+  } else {
+    list.forEach(t=>html+=thCard(t));
+  }
+  $("list").innerHTML=html;
+  document.querySelectorAll(".pchip").forEach(b=>b.onclick=()=>{ TSTATUS=b.dataset.s; render(); });
+}
+function thCard(t){
+  const cc=t.status==="完了"?"var(--ok)":t.status==="効果確認"?"var(--warn)":t.status==="対策中"?"var(--info)":"#9ab";
+  return `<div class="tcard" style="--cc:${cc}" onclick="openTh('${esc(t.id)}')">
+    <div class="th"><span class="t">${esc(t.title)}</span><span class="sbadge ${statusClass(t.status)}">${esc(t.status)}</span></div>
+    ${t.waste?`<div class="body"><span class="lbl">現状のムダ</span>${esc(t.waste)}</div>`:""}
+    ${t.plan?`<div class="body"><span class="lbl">対策案</span>${esc(t.plan)}</div>`:""}
+    <div class="meta"><span class="catb">${esc(t.cat||"その他")}</span>${t.by?`<span>${esc(t.by)}</span>`:""}${t.memo?`<span>📝 ${esc(t.memo)}</span>`:""}</div>
+  </div>`;
+}
+
+/* ===== モーダル開閉 ===== */
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove("show"));
+document.querySelectorAll(".mwrap").forEach(w=>w.addEventListener("click",e=>{ if(e.target===w) w.classList.remove("show"); }));
+
+/* ===== 不良記録 モーダル ===== */
+function setThick(k){ selThick=k; document.querySelectorAll("#thickSeg .seg").forEach(b=>b.classList.toggle("on",b.dataset.th===k)); $("fThickOther").style.display=k==="other"?"":"none"; }
+function setSort(v){ selSort=v; document.querySelectorAll("#sortSeg .seg").forEach(b=>b.classList.toggle("on",b.dataset.sort===v)); $("fSortCond").style.display=v==="あり"?"":"none"; }
+document.querySelectorAll("#thickSeg .seg").forEach(b=>b.onclick=()=>setThick(b.dataset.th));
+document.querySelectorAll("#sortSeg .seg").forEach(b=>b.onclick=()=>setSort(b.dataset.sort));
+["fTotal","fCrack","fPlug","fOther"].forEach(id=>$(id).addEventListener("input",updateLive));
+function updateLive(){
+  const tot=parseInt($("fTotal").value,10)||0;
+  const ng=(parseInt($("fCrack").value,10)||0)+(parseInt($("fPlug").value,10)||0)+(parseInt($("fOther").value,10)||0);
+  const box=$("liveBox");
+  if(!tot){ box.innerHTML="加工枚数を入力してください"; return; }
+  if(ng>tot){ box.innerHTML='<span style="color:var(--danger)">不良の合計('+ng+'枚)が加工枚数('+tot+'枚)を超えています</span>'; return; }
+  const rate=tot>0?ng/tot:0;
+  box.innerHTML='不良計 <span class="rr">'+ng+'</span> 枚　不良率 <span class="rr">'+pct(rate)+'</span> %';
+}
+function buildRecWhoChips(){
+  const w=$("recWhoChips");
+  if(!MEMBERS.length){ w.innerHTML='<span style="font-size:12px;color:var(--sub)">メンバー未登録です。右の「メンバーを編集」から登録してください。</span>'; return; }
+  w.innerHTML="";
+  MEMBERS.forEach(m=>{ const b=document.createElement("button"); b.type="button"; b.className="who"+(m===selWho?" on":""); b.textContent=m; b.onclick=()=>{ selWho=m; buildRecWhoChips(); }; w.appendChild(b); });
+}
+$("fab").onclick=()=>{ if(TAB==="rec") openRecNew(); else openThNew(); };
+function openRecNew(){
+  editRecId=null;
+  $("recTitle").textContent="不良を記録";
+  $("fDate").value=TODAY||todayStr();
+  setThick("12"); $("fThickOther").value="";
+  $("fProduct").value="";
+  setSort("なし"); $("fSortCond").value="";
+  $("fTotal").value=""; $("fCrack").value="0"; $("fPlug").value="0"; $("fOther").value="0";
+  $("fMemo").value="";
+  selWho=localStorage.getItem(WHO_KEY)||MEMBERS[0]||"";
+  if(!MEMBERS.includes(selWho)) selWho=MEMBERS[0]||"";
+  buildRecWhoChips(); updateLive();
+  $("recErr").textContent=""; $("recDel").style.display="none";
+  $("recWrap").classList.add("show");
+}
+function openRec(id){
+  const r=RECORDS.find(x=>x.id===id); if(!r) return;
+  editRecId=id;
+  $("recTitle").textContent="記録を編集";
+  $("fDate").value=r.date;
+  const k=normThick(r.thickness);
+  if(k==="12"||k==="15"){ setThick(k); $("fThickOther").value=""; }
+  else { setThick("other"); $("fThickOther").value=r.thickness||""; }
+  $("fProduct").value=r.product||"";
+  setSort(r.sorted==="あり"?"あり":"なし"); $("fSortCond").value=r.sortCond||"";
+  $("fTotal").value=r.total; $("fCrack").value=r.crack; $("fPlug").value=r.plug; $("fOther").value=r.other;
+  $("fMemo").value=r.memo||"";
+  selWho=r.by||localStorage.getItem(WHO_KEY)||MEMBERS[0]||"";
+  buildRecWhoChips(); updateLive();
+  $("recErr").textContent=""; $("recDel").style.display="";
+  $("recWrap").classList.add("show");
+}
+function collectRec(){
+  const date=$("fDate").value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ $("recErr").textContent="日付を入力してください"; return null; }
+  let thickness=selThick;
+  if(selThick==="other"){ thickness=$("fThickOther").value.trim(); if(!thickness){ $("recErr").textContent="厚みを入力してください"; return null; } }
+  const total=parseInt($("fTotal").value,10)||0;
+  if(!(total>0)){ $("recErr").textContent="加工枚数は1以上を入力してください"; return null; }
+  const crack=parseInt($("fCrack").value,10)||0, plug=parseInt($("fPlug").value,10)||0, other=parseInt($("fOther").value,10)||0;
+  if(crack<0||plug<0||other<0){ $("recErr").textContent="不良枚数はマイナスにできません"; return null; }
+  if(crack+plug+other>total){ $("recErr").textContent="不良の合計が加工枚数を超えています"; return null; }
+  return { id:editRecId||"", date, thickness, product:$("fProduct").value.trim(), sorted:selSort,
+    sortCond:selSort==="あり"?$("fSortCond").value.trim():"", total, crack, plug, other,
+    memo:$("fMemo").value.trim(), by:selWho };
+}
+$("recSave").onclick=async()=>{
+  const rec=collectRec(); if(!rec) return;
+  if(rec.by) localStorage.setItem(WHO_KEY,rec.by);
+  const btn=$("recSave"); btn.disabled=true; btn.textContent="保存中…"; $("recErr").textContent="";
+  try{
+    const j=await postAction({action:"saveRecord",record:rec});
+    if(!j.ok) throw new Error(j.error||"保存できませんでした");
+    $("recWrap").classList.remove("show");
+    toast(editRecId?"更新しました":"記録しました");
+    await fetchAll();
+  }catch(e){ $("recErr").textContent="保存エラー: "+e.message; }
+  finally{ btn.disabled=false; btn.textContent="保存する"; }
+};
+$("recDel").onclick=async()=>{
+  if(!editRecId) return;
+  const r=RECORDS.find(x=>x.id===editRecId);
+  if(!confirm((r?fmtMD(r.date)+"・"+thickBadge(r.thickness)+" ":"")+"の記録を削除しますか？")) return;
+  try{
+    const j=await postAction({action:"deleteRecord",id:editRecId});
+    if(!j.ok) throw new Error(j.error||"削除できませんでした");
+    $("recWrap").classList.remove("show");
+    toast("削除しました");
+    await fetchAll();
+  }catch(e){ $("recErr").textContent="削除エラー: "+e.message; }
+};
+
+/* ===== 改善 モーダル ===== */
+function openThNew(){
+  editThId=null;
+  $("thTitle").textContent="改善アイテムを追加";
+  $("tCat").value="現場"; $("tStatus").value="洗い出し";
+  $("tTitle").value=""; $("tWaste").value=""; $("tPlan").value=""; $("tMemo").value="";
+  $("thErr").textContent=""; $("thDel").style.display="none";
+  $("thWrap").classList.add("show");
+}
+function openTh(id){
+  const t=THEMES.find(x=>x.id===id); if(!t) return;
+  editThId=id;
+  $("thTitle").textContent="改善アイテムを編集";
+  $("tCat").value=["現場","事務","その他"].includes(t.cat)?t.cat:"その他";
+  $("tStatus").value=["洗い出し","対策中","効果確認","完了"].includes(t.status)?t.status:"洗い出し";
+  $("tTitle").value=t.title||""; $("tWaste").value=t.waste||""; $("tPlan").value=t.plan||""; $("tMemo").value=t.memo||"";
+  $("thErr").textContent=""; $("thDel").style.display="";
+  $("thWrap").classList.add("show");
+}
+$("thSave").onclick=async()=>{
+  const title=$("tTitle").value.trim();
+  if(!title){ $("thErr").textContent="タイトルを入力してください"; return; }
+  const theme={ id:editThId||"", cat:$("tCat").value, title, waste:$("tWaste").value.trim(), plan:$("tPlan").value.trim(), status:$("tStatus").value, memo:$("tMemo").value.trim() };
+  const btn=$("thSave"); btn.disabled=true; btn.textContent="保存中…"; $("thErr").textContent="";
+  try{
+    const j=await postAction({action:"saveTheme",theme});
+    if(!j.ok) throw new Error(j.error||"保存できませんでした");
+    $("thWrap").classList.remove("show");
+    toast(editThId?"更新しました":"追加しました");
+    await fetchAll();
+  }catch(e){ $("thErr").textContent="保存エラー: "+e.message; }
+  finally{ btn.disabled=false; btn.textContent="保存する"; }
+};
+$("thDel").onclick=async()=>{
+  if(!editThId) return;
+  const t=THEMES.find(x=>x.id===editThId);
+  if(!confirm("「"+(t?t.title:"")+"」を削除しますか？")) return;
+  try{
+    const j=await postAction({action:"deleteTheme",id:editThId});
+    if(!j.ok) throw new Error(j.error||"削除できませんでした");
+    $("thWrap").classList.remove("show");
+    toast("削除しました");
+    await fetchAll();
+  }catch(e){ $("thErr").textContent="削除エラー: "+e.message; }
+};
+
+/* ===== メンバー編集 ===== */
+$("memberEditBtn").onclick=()=>{ $("memberText").value=MEMBERS.join("\n"); $("memberErr").textContent=""; $("memberWrap").classList.add("show"); };
+$("memberSave").onclick=async()=>{
+  const names=$("memberText").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  if(!names.length){ $("memberErr").textContent="1人以上入力してください"; return; }
+  const btn=$("memberSave"); btn.disabled=true; btn.textContent="保存中…";
+  try{
+    const j=await postAction({action:"saveMembers",names});
+    if(!j.ok) throw new Error(j.error||"保存できませんでした");
+    MEMBERS=names;
+    $("memberWrap").classList.remove("show");
+    if(!MEMBERS.includes(selWho)) selWho=MEMBERS[0]||"";
+    buildRecWhoChips();
+    toast("メンバーを更新しました");
+    fetchAll();
+  }catch(e){ $("memberErr").textContent="エラー: "+e.message; }
+  finally{ btn.disabled=false; btn.textContent="保存する"; }
+};
+
+boot();
+</script>
+</body>
+</html>
