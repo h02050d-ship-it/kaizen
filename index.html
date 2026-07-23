@@ -37,6 +37,13 @@ header .ttl small{display:block;font-size:10px;font-weight:600;opacity:.78;lette
 
 /* ===== 本文 ===== */
 main{padding:4px 14px 0;max-width:760px;margin:0 auto}
+/* PC: 記録欄と集計欄を横並び（スマホは縦積み） */
+.cols{display:block}
+@media(min-width:1000px){
+  main{max-width:1300px}
+  .tabs{max-width:1300px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;align-items:start}
+}
 .sechead{font-size:12px;font-weight:800;color:var(--sub);letter-spacing:.06em;margin:16px 2px 8px;display:flex;align-items:center;gap:6px}
 .sechead::after{content:"";flex:1;height:1px;background:var(--line)}
 
@@ -198,11 +205,6 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
   <a class="hbtn" id="sheetBtn" target="_blank" style="display:none">📊</a>
 </header>
 
-<div class="tabs">
-  <button class="tab on" data-tab="rec">📉 不良記録</button>
-  <button class="tab" data-tab="kaizen">💡 改善リスト<span class="n" id="nKaizen"></span></button>
-</div>
-
 <main id="list"></main>
 
 <button id="fab">＋ 記録</button>
@@ -229,7 +231,9 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
           <button type="button" class="seg" data-len="4m">4m</button>
         </div>
       </div>
-      <div class="fld"><label>等級</label><input type="text" id="fGrade" list="gradeList" placeholder="例：上小・節あり（任意）"><datalist id="gradeList"></datalist></div>
+      <div class="fld"><label>等級</label>
+        <div class="segrow" id="gradeSeg"></div>
+      </div>
       <div class="fld"><label>商品メモ</label><input type="text" id="fProduct" placeholder="例：桧羽目板（任意）"></div>
       <div class="fld"><label>原板の仕分け<em>*</em></label>
         <div class="segrow" id="sortSeg">
@@ -249,30 +253,6 @@ main{padding:4px 14px 0;max-width:760px;margin:0 auto}
       <div class="merr" id="recErr"></div>
       <button class="msave" id="recSave">保存する</button>
       <button class="mdel" id="recDel" style="display:none">🗑 この記録を削除</button>
-    </div>
-  </div>
-</div>
-
-<!-- 改善 追加・編集 -->
-<div class="mwrap" id="thWrap">
-  <div class="modal">
-    <div class="mhead"><h2 id="thTitle">改善アイテムを追加</h2><button class="mx" data-close="thWrap">✕</button></div>
-    <div class="mbody">
-      <div class="row2">
-        <div class="fld"><label>分類</label>
-          <select id="tCat"><option>現場</option><option>事務</option><option>その他</option></select>
-        </div>
-        <div class="fld"><label>状態</label>
-          <select id="tStatus"><option>洗い出し</option><option>対策中</option><option>効果確認</option><option>完了</option></select>
-        </div>
-      </div>
-      <div class="fld"><label>タイトル<em>*</em></label><input type="text" id="tTitle" placeholder="例：モルダーの埋木飛びを減らす"></div>
-      <div class="fld"><label>現状のムダ</label><textarea id="tWaste" placeholder="いま何がムダ・ロスになっているか"></textarea></div>
-      <div class="fld"><label>対策案</label><textarea id="tPlan" placeholder="どう改善するか"></textarea></div>
-      <div class="fld"><label>メモ</label><textarea id="tMemo" placeholder="補足（任意）"></textarea></div>
-      <div class="merr" id="thErr"></div>
-      <button class="msave" id="thSave">保存する</button>
-      <button class="mdel" id="thDel" style="display:none">🗑 この項目を削除</button>
     </div>
   </div>
 </div>
@@ -317,12 +297,9 @@ const WHO_KEY="hayazai_kaizen_who";
 
 /* ===== 状態 ===== */
 let RECORDS=[], THEMES=[], MEMBERS=[], SHEET_URL="", TODAY="";
-let TAB="rec";
 let PERIOD="30d";        // 30d | thism | lastm | all
-let TSTATUS="all";       // 改善リストの状態フィルタ
 let editRecId=null;
 let editSrcT=null;       // 刃物管理ツールの履歴t（連携元ID）
-let editThId=null;
 let selThick="12";       // '12' | '15' | 'other'
 let selLen="";           // '' | '1m' | '2m' | '3m' | '4m'
 let selSort="なし";      // 'なし' | 'あり'
@@ -343,7 +320,7 @@ function fetchHamono(){
     if(s.parentNode) s.parentNode.removeChild(s);
     HAMONO.state=ok?"ok":"err";
     if(ok) HAMONO.hist=(j&&j.history)||[];
-    if(TAB==="rec"&&$("gate").style.display!=="flex") render();
+    if($("gate").style.display!=="flex") render();
   };
   window[cb]=j=>done(true,j);
   s.onerror=()=>done(false);
@@ -451,9 +428,6 @@ async function postAction(payload){
   return JSON.parse(t);
 }
 
-/* ===== タブ ===== */
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b)); render(); });
-
 /* ===== 期間フィルタ ===== */
 function periodStart(){
   const t=TODAY||todayStr();
@@ -485,11 +459,9 @@ function agg(list){
 
 /* ===== 描画 ===== */
 function render(){
-  const openTheme=THEMES.filter(t=>t.status!=="完了").length;
-  $("nKaizen").textContent=openTheme?openTheme:"";
   $("fab").style.display="flex";
-  $("fab").innerHTML=TAB==="rec"?"＋ 記録":"＋ 追加";
-  if(TAB==="rec") renderRec(); else renderKaizen();
+  $("fab").innerHTML="＋ 記録";
+  renderRec();
 }
 
 function renderRec(){
@@ -501,60 +473,63 @@ function renderRec(){
     +pchip("30d","直近30日")+pchip("thism","今月")+pchip("lastm","先月")+pchip("all","全期間")
     +'</div>';
 
-  // 刃物管理ツールの加工実績（タップで修正入力）
-  html+='<div class="sechead">🔪 最近のモルダー加工（刃物管理と連動）</div>';
-  html+=hamonoHtml();
-
+  // ── 記録欄（左カラム）──
+  let rec="";
+  rec+='<div class="sechead">🔪 最近のモルダー加工（刃物管理と連動）</div>';
+  rec+=hamonoHtml();
+  rec+='<div class="sechead">🕐 記録一覧（新しい順）</div>';
   if(!RECORDS.length){
-    html+='<div class="empty"><div class="big">📉</div>まだ不良記録がありません<br>上の加工実績をタップするか、右下の「＋ 記録」から<br>「何枚中何枚 修正行きか」を記録できます</div>';
-    $("list").innerHTML=html; bindPchips(); return;
+    rec+='<div class="empty" style="padding:30px 0"><div class="big">📉</div>まだ記録がありません<br>上の加工実績をタップするか、右下の「＋ 記録」から<br>「何枚中何枚 修正行きか」を記録できます</div>';
+  } else if(!list.length){
+    rec+='<div class="empty" style="padding:26px 0">この期間の記録はありません<br><span style="font-size:11px">上の期間を変えてみてください</span></div>';
+  } else {
+    list.forEach(r=>rec+=recRow(r));
   }
 
-  // 厚み別サマリー
+  // ── 集計欄（右カラム）──
+  let ag="";
   const groups={}; // key -> list
   list.forEach(r=>{ const k=normThick(r.thickness); (groups[k]=groups[k]||[]).push(r); });
   const order=["12","15"]; Object.keys(groups).forEach(k=>{ if(!order.includes(k)) order.push(k); });
   const shownKeys=order.filter(k=>groups[k]&&groups[k].length);
 
   if(!shownKeys.length){
-    html+='<div class="empty" style="padding:36px 0"><div class="big">🗓</div>この期間の記録はありません<br><span style="font-size:11px">上の期間を変えてみてください</span></div>';
-    $("list").innerHTML=html; bindPchips(); return;
+    ag+='<div class="sechead">📊 厚み別の修正率</div><div class="empty" style="padding:26px 0">この期間の集計はまだありません</div>';
+  } else {
+    ag+='<div class="sechead">📊 厚み別の修正率</div><div class="sumgrid">';
+    shownKeys.forEach(k=>{
+      const a=agg(groups[k]); const cc=thickColor(k);
+      ag+=`<div class="sumcard" style="--cc:${cc}">
+        <div class="th">${esc(thickLabel(k))}<span class="sub">${a.n}件</span></div>
+        <div class="rate">${pct(a.rate)}<small>%</small></div>
+        <div class="cnt">加工 ${a.total}枚 中 修正行き ${a.fix}枚</div>
+      </div>`;
+    });
+    ag+='</div>';
+
+    // 仕分け比較
+    ag+='<div class="sechead">🔀 仕分けなし / あり 比較</div>';
+    ag+='<div class="cmpwrap">';
+    shownKeys.forEach(k=>{
+      const none=groups[k].filter(r=>r.sorted!=="あり");
+      const yes=groups[k].filter(r=>r.sorted==="あり");
+      const an=agg(none), ay=agg(yes);
+      const bothHave=an.n&&ay.n;
+      const win=bothHave?(ay.rate<an.rate?"yes":(an.rate<ay.rate?"none":"")):"";
+      ag+=`<div class="cmprow"><div class="cth">${esc(thickLabel(k))}</div><div class="cmpcols">
+        ${cmpCol("仕分けなし",an,win==="none")}
+        ${cmpCol("仕分けあり",ay,win==="yes")}
+      </div>${bothHave?"":'<div class="cnt" style="font-size:10px;color:var(--sub);margin-top:6px">比較データなし（両方の記録がそろうと差が見えます）</div>'}</div>`;
+    });
+    ag+='</div>';
   }
 
-  html+='<div class="sechead">📊 厚み別の修正率</div><div class="sumgrid">';
-  shownKeys.forEach(k=>{
-    const a=agg(groups[k]); const cc=thickColor(k);
-    html+=`<div class="sumcard" style="--cc:${cc}">
-      <div class="th">${esc(thickLabel(k))}<span class="sub">${a.n}件</span></div>
-      <div class="rate">${pct(a.rate)}<small>%</small></div>
-      <div class="cnt">加工 ${a.total}枚 中 修正行き ${a.fix}枚</div>
-    </div>`;
-  });
-  html+='</div>';
-
-  // 仕分け比較
-  html+='<div class="sechead">🔀 仕分けなし / あり 比較</div>';
-  html+='<div class="cmpwrap">';
-  shownKeys.forEach(k=>{
-    const none=groups[k].filter(r=>r.sorted!=="あり");
-    const yes=groups[k].filter(r=>r.sorted==="あり");
-    const an=agg(none), ay=agg(yes);
-    const bothHave=an.n&&ay.n;
-    const win=bothHave?(ay.rate<an.rate?"yes":(an.rate<ay.rate?"none":"")):"";
-    html+=`<div class="cmprow"><div class="cth">${esc(thickLabel(k))}</div><div class="cmpcols">
-      ${cmpCol("仕分けなし",an,win==="none")}
-      ${cmpCol("仕分けあり",ay,win==="yes")}
-    </div>${bothHave?"":'<div class="cnt" style="font-size:10px;color:var(--sub);margin-top:6px">比較データなし（両方の記録がそろうと差が見えます）</div>'}</div>`;
-  });
-  html+='</div>';
-
   // 月別推移（直近6ヶ月・厚み全体・期間フィルタ非依存）
-  html+='<div class="sechead">📈 月別の修正率（直近6ヶ月・全厚み）</div>';
-  html+=trendHtml();
+  ag+='<div class="sechead">📈 月別の修正率（直近6ヶ月・全厚み）</div>';
+  ag+=trendHtml();
 
-  // 履歴
-  html+='<div class="sechead">🕐 記録一覧（新しい順）</div>';
-  list.forEach(r=>html+=recRow(r));
+  // PC=2カラム（左=記録・右=集計）／スマホ=縦積み
+  html+='<div class="cols"><div class="col">'+rec+'</div><div class="col">'+ag+'</div></div>';
 
   $("list").innerHTML=html; bindPchips();
 }
@@ -687,32 +662,6 @@ function recRow(r){
   </div>`;
 }
 
-/* ===== 改善リスト ===== */
-const ST=[["all","すべて"],["洗い出し","洗い出し"],["対策中","対策中"],["効果確認","効果確認"],["完了","完了"]];
-function statusClass(s){ return s==="完了"?"sb-fin":s==="効果確認"?"sb-chk":s==="対策中"?"sb-do":"sb-out"; }
-function renderKaizen(){
-  let html='<div class="pchips">'+ST.map(([k,l])=>`<button class="pchip${TSTATUS===k?" on":""}" data-s="${k}">${l}</button>`).join("")+'</div>';
-  const list=THEMES.filter(t=>TSTATUS==="all"||t.status===TSTATUS);
-  if(!THEMES.length){
-    html+='<div class="empty"><div class="big">💡</div>まだ改善アイテムがありません<br>現場・事務のムダを見つけたら<br>右下の「＋ 追加」から書き留めましょう</div>';
-  } else if(!list.length){
-    html+='<div class="empty" style="padding:36px 0">この状態の項目はありません</div>';
-  } else {
-    list.forEach(t=>html+=thCard(t));
-  }
-  $("list").innerHTML=html;
-  document.querySelectorAll(".pchip").forEach(b=>b.onclick=()=>{ TSTATUS=b.dataset.s; render(); });
-}
-function thCard(t){
-  const cc=t.status==="完了"?"var(--ok)":t.status==="効果確認"?"var(--warn)":t.status==="対策中"?"var(--info)":"#9ab";
-  return `<div class="tcard" style="--cc:${cc}" onclick="openTh('${esc(t.id)}')">
-    <div class="th"><span class="t">${esc(t.title)}</span><span class="sbadge ${statusClass(t.status)}">${esc(t.status)}</span></div>
-    ${t.waste?`<div class="body"><span class="lbl">現状のムダ</span>${esc(t.waste)}</div>`:""}
-    ${t.plan?`<div class="body"><span class="lbl">対策案</span>${esc(t.plan)}</div>`:""}
-    <div class="meta"><span class="catb">${esc(t.cat||"その他")}</span>${t.by?`<span>${esc(t.by)}</span>`:""}${t.memo?`<span>📝 ${esc(t.memo)}</span>`:""}</div>
-  </div>`;
-}
-
 /* ===== モーダル開閉 ===== */
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove("show"));
 document.querySelectorAll(".mwrap").forEach(w=>w.addEventListener("click",e=>{ if(e.target===w) w.classList.remove("show"); }));
@@ -734,10 +683,18 @@ function updateLive(){
   const rate=tot>0?fix/tot:0;
   box.innerHTML='修正行き <span class="rr">'+fix+'</span> 枚　修正率 <span class="rr">'+pct(rate)+'</span> %';
 }
-function fillGradeList(){
-  const set=new Set(["無地","上小","小節","節あり"]);
-  RECORDS.forEach(r=>{ if(r.grade) set.add(r.grade); });
-  $("gradeList").innerHTML=[...set].map(g=>'<option value="'+esc(g)+'">').join("");
+const GRADES=["丸節","小節","特上小","無節"];
+let selGrade="丸節";
+function setGrade(v){
+  selGrade=v||"丸節";
+  const seg=$("gradeSeg"); seg.innerHTML="";
+  const opts=GRADES.includes(selGrade)?GRADES:GRADES.concat([selGrade]); // 旧データの独自等級も編集時は選択肢に出す
+  opts.forEach(g=>{
+    const b=document.createElement("button"); b.type="button";
+    b.className="seg"+(g===selGrade?" on":""); b.textContent=g;
+    b.onclick=()=>setGrade(g);
+    seg.appendChild(b);
+  });
 }
 function buildRecWhoChips(){
   const w=$("recWhoChips");
@@ -745,13 +702,13 @@ function buildRecWhoChips(){
   w.innerHTML="";
   MEMBERS.forEach(m=>{ const b=document.createElement("button"); b.type="button"; b.className="who"+(m===selWho?" on":""); b.textContent=m; b.onclick=()=>{ selWho=m; buildRecWhoChips(); }; w.appendChild(b); });
 }
-$("fab").onclick=()=>{ if(TAB==="rec") openRecNew(); else openThNew(); };
+$("fab").onclick=()=>openRecNew();
 function openRecNew(){
   editRecId=null; editSrcT=null;
   $("recTitle").textContent="修正行きを記録";
   $("fDate").value=TODAY||todayStr();
   setThick("12"); $("fThickOther").value="";
-  setLen(""); $("fGrade").value=""; fillGradeList();
+  setLen(""); setGrade("丸節");
   $("fProduct").value="";
   setSort("なし"); $("fSortCond").value="";
   $("fTotal").value=""; $("fFix").value="0";
@@ -770,7 +727,7 @@ function openRec(id){
   const k=normThick(r.thickness);
   if(k==="12"||k==="15"){ setThick(k); $("fThickOther").value=""; }
   else { setThick("other"); $("fThickOther").value=r.thickness||""; }
-  setLen(r.length||""); $("fGrade").value=r.grade||""; fillGradeList();
+  setLen(r.length||""); setGrade(r.grade||"丸節");
   $("fProduct").value=r.product||"";
   setSort(r.sorted==="あり"?"あり":"なし"); $("fSortCond").value=r.sortCond||"";
   $("fTotal").value=r.total; $("fFix").value=r.fix;
@@ -790,7 +747,7 @@ function collectRec(){
   const fix=parseInt($("fFix").value,10)||0;
   if(fix<0){ $("recErr").textContent="修正行きはマイナスにできません"; return null; }
   if(fix>total){ $("recErr").textContent="修正行きが加工枚数を超えています"; return null; }
-  return { id:editRecId||"", date, thickness, length:selLen, grade:$("fGrade").value.trim(),
+  return { id:editRecId||"", date, thickness, length:selLen, grade:selGrade,
     product:$("fProduct").value.trim(), sorted:selSort,
     sortCond:selSort==="あり"?$("fSortCond").value.trim():"", total, fix,
     memo:$("fMemo").value.trim(), by:selWho, srcT:editSrcT||"" };
@@ -820,52 +777,6 @@ $("recDel").onclick=async()=>{
     toast("削除しました");
     await fetchAll();
   }catch(e){ $("recErr").textContent="削除エラー: "+e.message; }
-};
-
-/* ===== 改善 モーダル ===== */
-function openThNew(){
-  editThId=null;
-  $("thTitle").textContent="改善アイテムを追加";
-  $("tCat").value="現場"; $("tStatus").value="洗い出し";
-  $("tTitle").value=""; $("tWaste").value=""; $("tPlan").value=""; $("tMemo").value="";
-  $("thErr").textContent=""; $("thDel").style.display="none";
-  $("thWrap").classList.add("show");
-}
-function openTh(id){
-  const t=THEMES.find(x=>x.id===id); if(!t) return;
-  editThId=id;
-  $("thTitle").textContent="改善アイテムを編集";
-  $("tCat").value=["現場","事務","その他"].includes(t.cat)?t.cat:"その他";
-  $("tStatus").value=["洗い出し","対策中","効果確認","完了"].includes(t.status)?t.status:"洗い出し";
-  $("tTitle").value=t.title||""; $("tWaste").value=t.waste||""; $("tPlan").value=t.plan||""; $("tMemo").value=t.memo||"";
-  $("thErr").textContent=""; $("thDel").style.display="";
-  $("thWrap").classList.add("show");
-}
-$("thSave").onclick=async()=>{
-  const title=$("tTitle").value.trim();
-  if(!title){ $("thErr").textContent="タイトルを入力してください"; return; }
-  const theme={ id:editThId||"", cat:$("tCat").value, title, waste:$("tWaste").value.trim(), plan:$("tPlan").value.trim(), status:$("tStatus").value, memo:$("tMemo").value.trim() };
-  const btn=$("thSave"); btn.disabled=true; btn.textContent="保存中…"; $("thErr").textContent="";
-  try{
-    const j=await postAction({action:"saveTheme",theme});
-    if(!j.ok) throw new Error(j.error||"保存できませんでした");
-    $("thWrap").classList.remove("show");
-    toast(editThId?"更新しました":"追加しました");
-    await fetchAll();
-  }catch(e){ $("thErr").textContent="保存エラー: "+e.message; }
-  finally{ btn.disabled=false; btn.textContent="保存する"; }
-};
-$("thDel").onclick=async()=>{
-  if(!editThId) return;
-  const t=THEMES.find(x=>x.id===editThId);
-  if(!confirm("「"+(t?t.title:"")+"」を削除しますか？")) return;
-  try{
-    const j=await postAction({action:"deleteTheme",id:editThId});
-    if(!j.ok) throw new Error(j.error||"削除できませんでした");
-    $("thWrap").classList.remove("show");
-    toast("削除しました");
-    await fetchAll();
-  }catch(e){ $("thErr").textContent="削除エラー: "+e.message; }
 };
 
 /* ===== メンバー編集 ===== */
